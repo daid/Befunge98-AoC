@@ -73,7 +73,7 @@ body {
 .history2 { background-color: #94FF94 }
 .history1 { background-color: #88FF88 }
 .used { background-color: #EEFFEE }
-.breakpoint { background-color: #FFEEEE }
+.breakpoint { background-color: #FFCCCC }
 </style>
 </head>
 <div id="codecontent">
@@ -413,7 +413,7 @@ EBI("code").onmousemove = function(e) {
 EBI("code").onmouseleave = function(e) {
     EBI("tooltip").style.display = "none";
 }
-EBI("input").oninput = function() { window.requestAnimationFrame(function() { start_input_data = EBI("input").innerText; localStorage["defunge_input"] = start_input_data; reload(); }); }
+EBI("input").oninput = function() { window.requestAnimationFrame(function() { start_input_data = EBI("input").innerText; if (!start_input_data.endsWith("\n")) start_input_data += "\n"; localStorage["defunge_input"] = start_input_data; reload(); }); }
 EBI("reset").onclick = function() { reload(); updateBackground(); }
 EBI("step").onclick = function() { befunge.running = false; befunge.step(); updateBackground(); updateCode(); }
 EBI("run").onclick = function() { befunge.run(1000, function() { updateBackground(); updateCode(); }); }

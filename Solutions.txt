@@ -1,23 +1,23 @@
 ===Day1: PART 1===
 0v            <
-v<v  +**25\  <
->0>~68*-:01-`|
-     v!`0:$  <
+v<v  +**25\  < 
+>0[~68*-:01-`| 
+v <  v!`0:$  < 
 v`0:$_+>      ^
-!      $
-_:98g`!|@.g89$
+!      $       
+_:98g`!|@.g89$ 
        >   98p^
 
 ===Day1: PART 2===
 0v            < <         
 v<v  +**25\  <            
->0>~68*-:01-`|            
-     v!`0:$  <            
+>0[~68*-:01-`|            
+v <  v!`0:$  <            
 v`0:$_+>      ^           
 !      >       v          
 _:98g`!|@.++g89  g87g88$  
        >98g\98pv          
-                          
+
 v       <                 
         |!`g88:<          
 vp88\g88<       $         
@@ -25,16 +25,18 @@ vp88\g88<       $
 >:78g`|                   
       >         ^         
 
-=== Day2 Part 1 === NOTE: Depends on extra newline after final row, does not properly end.
+=== Day2 Part 1 ===
 099p v             
-v    <             
->~d5*-~$~b8*-~$ v  
- v+1-\p99+g99+1:<  
-^>3+3%3*99g+:.99p  
+v    <           < 
+[~d5*-~$~b8*-~$ v  
+9v+1-\p99+g99+1:<  
+9>3+3%3*99g+  99p^ 
+>g.@
 
-=== Day2 Part 2 === NOTE: Depends on extra newline after final row, does not properly end.
+=== Day2 Part 2 ===
 099p v             
-v    <             
->~d5*-~$~b8*-~$ v  
- v  + p99+g99*3:<  
-^>2+3%1+99g+:.99p
+v    <           < 
+[~d5*-~$~b8*-~$ v  
+9v  + p99+g99*3:<  
+9>2+3%1+99g+  99p^ 
+>g.@

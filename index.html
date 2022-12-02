@@ -17,10 +17,10 @@ body {
 }
 #code {
     outline: 0px;
-	display: inline-block;
+    display: inline-block;
     font-family: monospace;
-	min-width: 100px;
-	white-space: pre;
+    min-width: 100px;
+    white-space: pre;
 }
 #codebg {
     font-family: monospace;
@@ -45,18 +45,35 @@ body {
 }
 #input {
     outline: 0px;
-	display: inline-block;
+    display: inline-block;
     font-family: monospace;
-	min-width: 100px;
-	white-space: pre;
+    min-width: 100px;
+    white-space: pre;
     vertical-align: top;
+}
+#tooltip {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    font-family: monospace;
+    vertical-align: top;
+    background: white;
+    border: solid 1px black;
+    display: None;
 }
 .horizontal { background: linear-gradient(0deg, var(--line1) calc(50% - 1px), var(--line2) calc(50%), var(--line1) calc(50% + 1px)); }
 .vertical { background: linear-gradient(90deg, var(--line1) calc(50% - 1px), var(--line2) calc(50%), var(--line1) calc(50% + 1px)); }
 .cross { background: linear-gradient(0deg, var(--line1) calc(50% - 1px), var(--line2) calc(50%), var(--line1) calc(50% + 1px)), linear-gradient(90deg, var(--line1) calc(50% - 1px), var(--line2) calc(50%), var(--line1) calc(50% + 1px)); }
-.cursor { background-color: #8F8 }
-.used { background-color: #EFE }
-.breakpoint { background-color: #FEE }
+.cursor { background-color: #88FF88 }
+.history7 { background-color: #E1FFE1 }
+.history6 { background-color: #D4FFD4 }
+.history5 { background-color: #C7FFC7 }
+.history4 { background-color: #BBFFBB }
+.history3 { background-color: #AEFFAE }
+.history2 { background-color: #94FF94 }
+.history1 { background-color: #88FF88 }
+.used { background-color: #EEFFEE }
+.breakpoint { background-color: #FFEEEE }
 </style>
 </head>
 <div id="codecontent">
@@ -74,6 +91,7 @@ Output:
 <div id="output"></div>
 Input:
 <div id="input" contenteditable="true" spellcheck="false"></div>
+<div id="tooltip">Tooltip!</div>
 <script>"use strict";
 function EBI(id) { return document.getElementById(id); }
 
@@ -81,18 +99,26 @@ var befunge;
 
 function updateBackground() {
     var html = "";
+    
     for(var y=0;y<befunge.height;y++) {
         for(var x=0;x<befunge.width;x++) {
             var movement = befunge.movement_field[x+":"+y];
             var sclass = "";
-			var horizontal = (movement & 0x11) == 0x11 || (movement & 0x22) == 0x22;
-			var vertical = (movement & 0x44) == 0x44 || (movement & 0x88) == 0x88;
+            var horizontal = (movement & 0x11) == 0x11 || (movement & 0x22) == 0x22;
+            var vertical = (movement & 0x44) == 0x44 || (movement & 0x88) == 0x88;
             if (horizontal && vertical) sclass = "cross";
             else if (horizontal) sclass = "horizontal";
             else if (vertical) sclass = "vertical";
+            var history_index = undefined;
+            for(var idx=0; idx<befunge.history.length; idx++) {
+                if (befunge.history[idx][0] == x && befunge.history[idx][1] == y) {
+                    history_index = befunge.history.length - idx;
+                }
+            }
             if (x == befunge.x && y == befunge.y) sclass += " cursor";
-			else if(befunge.breakpoints.has(x+":"+y)) sclass += " breakpoint";
-			else if(movement != undefined) sclass += " used";
+            else if(befunge.breakpoints.has(x+":"+y)) sclass += " breakpoint";
+            else if(history_index != undefined) sclass += " history" + history_index;
+            else if(movement != undefined) sclass += " used";
             html += "<span class='" + sclass + "'>&nbsp;</span>";
         }
         html += "<br/>";
@@ -106,15 +132,15 @@ function updateCode() {
     var code = ""
     for(var y=0;y<befunge.height;y++) {
         for(var x=0;x<befunge.width;x++) {
-            var c = befunge.space[x+":"+y] || 32
-			if (c == 160) c = 32;
+            var c = befunge.get(x, y)
+            if (c == 160) c = 32;
             if ((c >= 32 && c < 128))
                 code += String.fromCharCode(c);
             else
-                code += "?";
+                code += String.fromCharCode(1);
         }
-		if (y < befunge.height - 1)
-			code += "\n";
+        if (y < befunge.height - 1)
+            code += "\n";
     }
     EBI("code").innerText = code;
 }
@@ -123,6 +149,7 @@ var DX = [1, -1, 0, 0];
 var DY = [0, 0, 1, -1];
 var TURN_LEFT = [3, 2, 0, 1];
 var TURN_RIGHT = [2, 3, 1, 0];
+var REVERSE = [1, 0, 3, 2];
 class Befunge98 {
     constructor(code) {
         this.space = {};
@@ -136,10 +163,11 @@ class Befunge98 {
         this.input_buffer = "";
         this.output_buffer = "";
         this.running = false;
-		this.breakpoints = new Set();
+        this.breakpoints = new Set();
+        this.history = []
 
         var x = 0, y = 0;
-		if (code.endsWith("\n")) code = code.substr(0, code.length-1);
+        if (code.endsWith("\n")) code = code.substr(0, code.length-1);
         for(var c of code) {
             if (c == "\n") { this.width = Math.max(this.width, x); x = 0; y += 1; continue; }
             if (c != " " && c.charCodeAt(0) != 160) this.space[x+":"+y] = c.charCodeAt(0);
@@ -154,10 +182,10 @@ class Befunge98 {
     
     _build_movement_field(x, y, dir) {
         var skip = false;
-		var safety = 10000;
+        var safety = 10000;
         while(!(this.movement_field[x+":"+y] & (1 << dir)) && safety > 0) {
-			this.movement_field[x+":"+y] |= 0x10 << dir;
-			safety -= 1;
+            this.movement_field[x+":"+y] |= 0x10 << dir;
+            safety -= 1;
             if (skip) skip = false; else
             switch(this.space[x+":"+y]) {
             case ">".charCodeAt(0): dir = 0; break;
@@ -166,19 +194,19 @@ class Befunge98 {
             case "^".charCodeAt(0): dir = 3; break;
             case "|".charCodeAt(0): dir = 3; this.movement_field[x+":"+y] |= 1 << dir;  this._build_movement_field(x, y+1, 2); break;
             case "_".charCodeAt(0): dir = 0; this.movement_field[x+":"+y] |= 1 << dir;  this._build_movement_field(x-1, y, 1); break;
-			case "[".charCodeAt(0): dir = TURN_LEFT[dir]; break;
-			case "]".charCodeAt(0): dir = TURN_RIGHT[dir]; break;
+            case "[".charCodeAt(0): dir = TURN_LEFT[dir]; break;
+            case "]".charCodeAt(0): dir = TURN_RIGHT[dir]; break;
             case "?".charCodeAt(0): dir = 0; this.movement_field[x+":"+y] |= 0x0F; this._build_movement_field(x-1, y, 1); this._build_movement_field(x, y+1, 2); this._build_movement_field(x, y-1, 3); break;
             case "#".charCodeAt(0): skip=true; break;
-            case "@".charCodeAt(0): this.movement_field[x+":"+y] |= 1 << dir; return;
-			case ";".charCodeAt(0):
-				x = (x + DX[dir] + this.width) % this.width;
-				y = (y + DY[dir] + this.height) % this.height;
-				while(this.space[x+":"+y] != ";".charCodeAt(0)) {
-					x = (x + DX[dir] + this.width) % this.width;
-					y = (y + DY[dir] + this.height) % this.height;
-				}
-				break;
+            case "@".charCodeAt(0): return;
+            case ";".charCodeAt(0):
+                x = (x + DX[dir] + this.width) % this.width;
+                y = (y + DY[dir] + this.height) % this.height;
+                while(this.space[x+":"+y] != ";".charCodeAt(0)) {
+                    x = (x + DX[dir] + this.width) % this.width;
+                    y = (y + DY[dir] + this.height) % this.height;
+                }
+                break;
             }
             this.movement_field[x+":"+y] |= 1 << dir;
             x = (x + DX[dir] + this.width) % this.width;
@@ -195,12 +223,12 @@ class Befunge98 {
         case "\"".charCodeAt(0):
             this.x = (this.x + DX[this.dir] + this.width) % this.width;
             this.y = (this.y + DY[this.dir] + this.height) % this.height;
-			while(this.space[this.x+":"+this.y] != "\"".charCodeAt(0)) {
-				this.push(this.space[this.x+":"+this.y] || 32);
-				this.x = (this.x + DX[this.dir] + this.width) % this.width;
-				this.y = (this.y + DY[this.dir] + this.height) % this.height;
-			}
-			break;
+            while(this.space[this.x+":"+this.y] != "\"".charCodeAt(0)) {
+                this.push(this.get(this.x, this.y));
+                this.x = (this.x + DX[this.dir] + this.width) % this.width;
+                this.y = (this.y + DY[this.dir] + this.height) % this.height;
+            }
+            break;
         case "#".charCodeAt(0):
             this.x = (this.x + DX[this.dir] + this.width) % this.width;
             this.y = (this.y + DY[this.dir] + this.height) % this.height;
@@ -208,7 +236,11 @@ class Befunge98 {
         case "$".charCodeAt(0): this.pop(); break;
         case "%".charCodeAt(0): var a = this.pop(); var b = this.pop(); this.push(b % a); break;
         //case "&".charCodeAt(0):     Input Integer                  a         a = readint()
-        //case "'".charCodeAt(0):     Fetch Character/98             c         pos <- pos + delta
+        case "'".charCodeAt(0): 
+            this.x = (this.x + DX[this.dir] + this.width) % this.width;
+            this.y = (this.y + DY[this.dir] + this.height) % this.height;
+            this.push(this.get(this.x, this.y));
+            break;
         //case "(".charCodeAt(0):     Load Semantics/98    en..e1 n  f 1       overloads A-Z
         //case ")".charCodeAt(0):     Unload Semantics/98  en..e1 n            unloads last A-Z
         case "*".charCodeAt(0): var a = this.pop(); var b = this.pop(); this.push(a * b); break;
@@ -229,13 +261,13 @@ class Befunge98 {
         case "9".charCodeAt(0): this.push(9); break;
         case ":".charCodeAt(0): var a = this.pop(); this.push(a); this.push(a); break;
         case ";".charCodeAt(0):
-			this.x = (this.x + DX[this.dir] + this.width) % this.width;
+            this.x = (this.x + DX[this.dir] + this.width) % this.width;
             this.y = (this.y + DY[this.dir] + this.height) % this.height;
-			while(this.space[this.x+":"+this.y] != ";".charCodeAt(0)) {
-				this.x = (this.x + DX[this.dir] + this.width) % this.width;
-				this.y = (this.y + DY[this.dir] + this.height) % this.height;
-			}
-			break;
+            while(this.space[this.x+":"+this.y] != ";".charCodeAt(0)) {
+                this.x = (this.x + DX[this.dir] + this.width) % this.width;
+                this.y = (this.y + DY[this.dir] + this.height) % this.height;
+            }
+            break;
         case "<".charCodeAt(0): this.dir = 1; break;
         //case "=".charCodeAt(0):     Execute/98/f         STR       r         r = system-execute(STR)
         case ">".charCodeAt(0): this.dir = 0; break;
@@ -254,7 +286,7 @@ class Befunge98 {
         case "d".charCodeAt(0): this.push(13); break;
         case "e".charCodeAt(0): this.push(14); break;
         case "f".charCodeAt(0): this.push(15); break;
-        case "g".charCodeAt(0): var y = this.pop(); var x = this.pop(); this.push(this.space[x+":"+y] || 0); break;
+        case "g".charCodeAt(0): var y = this.pop(); var x = this.pop(); this.push(this.get(x, y)); break;
         //case "h".charCodeAt(0):     Go High/98/3D                            delta <- (0,0,-1)
         //case "i".charCodeAt(0):     Input File/98/f      Va f STR  Va Vb     inputs file
         //case "j".charCodeAt(0):     Jump Forward/98      s                   pos <- pos + delta * s
@@ -263,10 +295,14 @@ class Befunge98 {
         //case "m".charCodeAt(0):     High-Low If/98/3D    b                   delta <- if (b) (0,0,-1) else (0,0,1)
         //case "n".charCodeAt(0):     Clear Stack/98       en..e1
         //case "o".charCodeAt(0):     Output File/98/f     Va Vb f STR         outputs file
-        case "p".charCodeAt(0): var y = this.pop(); var x = this.pop(); this.space[x+":"+y] = this.pop(); break;
-        //case "q".charCodeAt(0):     Quit/98              r                   immediate exit, returncode = r
-        //case "r".charCodeAt(0):     Reflect/98                               delta <- delta * -1
-        //case "s".charCodeAt(0):     Store Character/98   c                   store-funge-space(position+delta,v)
+        case "p".charCodeAt(0): var y = this.pop(); var x = this.pop(); this.set(x, y, this.pop()); break;
+        case "q".charCodeAt(0): this.running = false; this.dir = 4; return;
+        case "r".charCodeAt(0): this.dir = REVERSE[this.dir]; break;
+        case "s".charCodeAt(0):
+            this.x = (this.x + DX[this.dir] + this.width) % this.width;
+            this.y = (this.y + DY[this.dir] + this.height) % this.height;
+            this.set(this.x, this.y, this.pop());
+            break;
         //case "t".charCodeAt(0):     Split/98/c                               Split IP
         //case "u".charCodeAt(0):     Stack Under Stack/98 n         (en..e1)
         case "v".charCodeAt(0): this.dir = 2; break;
@@ -278,79 +314,108 @@ class Befunge98 {
         case "|".charCodeAt(0): if (this.pop()) this.dir = 3; else this.dir = 2; break;
         //case "}".charCodeAt(0):     End Block/98         en..e1 n  (en..e1)  offset <- SOSS Va, etc
         case "~".charCodeAt(0):
-			if (this.input_buffer.length) {
-				this.push(this.input_buffer.charCodeAt(0)); this.input_buffer = this.input_buffer.substr(1);
-			} else {
-				//TODO: reverse
-				this.running = false; this.dir = 4; 
-			}
-			break;
+            if (this.input_buffer.length) {
+                this.push(this.input_buffer.charCodeAt(0)); this.input_buffer = this.input_buffer.substr(1);
+            } else {
+                this.dir = REVERSE[this.dir];
+            }
+            break;
         
         //NON standard!
         case "B".charCodeAt(0): this.running = false; break; //Debugging breakpoint.
         }
+        if (this.history.length > 6)
+            this.history.shift();
+        this.history.push([this.x, this.y]);
         this.x = (this.x + DX[this.dir] + this.width) % this.width;
         this.y = (this.y + DY[this.dir] + this.height) % this.height;
     }
     
-    run(callback)
+    set(x, y, value) {
+        this.space[x+":"+y] = value;
+        this.width = Math.max(this.width, x + 1);
+        this.height = Math.max(this.height, y + 1);
+    }
+    
+    get(x, y) {
+        var v = this.space[x+":"+y];
+        if (v == undefined) return 32;
+        return v;
+    }
+    
+    run(cycles, callback)
     {
         this.running = true;
         var f = () => {
-            for(var n=0; n<10000 && this.running && this.dir != 4; n++) {
-				this.step();
-				if (this.breakpoints.has(this.x+":"+this.y))
-					this.running = false;
-			}
+            for(var n=0; n<cycles && this.running && this.dir != 4; n++) {
+                this.step();
+                if (this.breakpoints.has(this.x+":"+this.y))
+                    this.running = false;
+            }
             callback();
             if (this.running && this.dir != 4) window.requestAnimationFrame(f);
         }
         f();
     }
-	
-	toggleBreakpoint(x, y) {
-		if (this.breakpoints.has(x+":"+y))
-			this.breakpoints.delete(x+":"+y);
-		else
-			this.breakpoints.add(x+":"+y);
-	}
+    
+    toggleBreakpoint(x, y) {
+        if (this.breakpoints.has(x+":"+y))
+            this.breakpoints.delete(x+":"+y);
+        else
+            this.breakpoints.add(x+":"+y);
+    }
 }
 
 var start_input_data = "";
 if (localStorage["defunge_code"]) {
-	EBI("code").innerText = localStorage["defunge_code"];
+    EBI("code").innerText = localStorage["defunge_code"];
 }
 if (localStorage["defunge_input"]) {
-	EBI("input").innerText = localStorage["defunge_input"];
-	start_input_data = localStorage["defunge_input"];
+    EBI("input").innerText = localStorage["defunge_input"];
+    start_input_data = localStorage["defunge_input"];
 }
 
 function reload()
 {
-	var breakpoints;
-	if (befunge) {
-		befunge.running = false;
-		breakpoints = befunge.breakpoints;
-	}
-	befunge = new Befunge98(EBI("code").innerText);
-	if (breakpoints)
-		befunge.breakpoints = breakpoints;
-	befunge.input_buffer = start_input_data;
+    var breakpoints;
+    if (befunge) {
+        befunge.running = false;
+        breakpoints = befunge.breakpoints;
+    }
+    befunge = new Befunge98(EBI("code").innerText);
+    if (breakpoints)
+        befunge.breakpoints = breakpoints;
+    befunge.input_buffer = start_input_data;
 }
 
 EBI("code").oninput = function() { window.requestAnimationFrame(function() { localStorage["defunge_code"] = EBI("code").innerText; reload(); updateBackground();}); }
 EBI("code").oninput();
 EBI("code").oncontextmenu = function(e) {
-	const r = EBI("codebg").children[0].getClientRects()[0];
-	const x = Math.floor(e.offsetX / r.width);
-	const y = Math.floor(e.offsetY / r.height);
-	befunge.toggleBreakpoint(x, y);
-	updateBackground();
-	return false;
+    const r = EBI("codebg").children[0].getClientRects()[0];
+    const x = Math.floor(e.offsetX / r.width);
+    const y = Math.floor(e.offsetY / r.height);
+    befunge.toggleBreakpoint(x, y);
+    updateBackground();
+    return false;
+}
+EBI("code").onmousemove = function(e) {
+    const r = EBI("codebg").children[0].getClientRects()[0];
+    const x = Math.floor(e.offsetX / r.width);
+    const y = Math.floor(e.offsetY / r.height);
+    
+    const tooltip = EBI("tooltip");
+    tooltip.style.left = ((x + 2) * r.width) + "px";
+    tooltip.style.top = ((y + 2) * r.height) + "px";
+    tooltip.style.display = "inline-block";
+    const value = befunge.get(x, y);
+    tooltip.innerText = x + ":" + y + " = " + value.toString();
+}
+EBI("code").onmouseleave = function(e) {
+    EBI("tooltip").style.display = "none";
 }
 EBI("input").oninput = function() { window.requestAnimationFrame(function() { start_input_data = EBI("input").innerText; localStorage["defunge_input"] = start_input_data; reload(); }); }
 EBI("reset").onclick = function() { reload(); updateBackground(); }
 EBI("step").onclick = function() { befunge.running = false; befunge.step(); updateBackground(); updateCode(); }
-EBI("run").onclick = function() { befunge.run(function() { updateBackground(); updateCode(); }); }
+EBI("run").onclick = function() { befunge.run(1000, function() { updateBackground(); updateCode(); }); }
 
 </script>

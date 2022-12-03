@@ -82,7 +82,7 @@ body {
 </head>
 <div id="codecontent">
 <div id="codebg"></div>
-<div id="code" contenteditable="true" spellcheck="false"></div>
+<div id="code" contenteditable="true" spellcheck="false">92/.@</div>
 </div>
 <div id="buttons">
     <button id="reset">Reset</button><br>
@@ -163,7 +163,8 @@ class Befunge98 {
         this.height = 0;
         this.x = 0;
         this.y = 0;
-        this.dir = 0;
+        this.dx = 1;
+        this.dy = 0;
         this.stack = []
         this.stacks = [this.stack]
         this.input_buffer = "";
@@ -204,6 +205,7 @@ class Befunge98 {
             case "#".charCodeAt(0): x = (x + DX[dir] + this.width) % this.width; y = (y + DY[dir] + this.height) % this.height; break;
             case "'".charCodeAt(0): x = (x + DX[dir] + this.width) % this.width; y = (y + DY[dir] + this.height) % this.height; break;
             case "@".charCodeAt(0): return;
+            case "x".charCodeAt(0): return;
             case ";".charCodeAt(0):
                 x = (x + DX[dir] + this.width) % this.width;
                 y = (y + DY[dir] + this.height) % this.height;
@@ -222,21 +224,25 @@ class Befunge98 {
     push(n) { this.stack.push(n); }
     pop() { return this.stack.pop() || 0; }
     
-    step() {
-        switch(this.space[this.x+":"+this.y]) {
+    execute(instruction) {
+        switch(instruction) {
         case "!".charCodeAt(0): this.push(this.pop() ? 0 : 1); break;
         case "\"".charCodeAt(0):
-            this.x = (this.x + DX[this.dir] + this.width) % this.width;
-            this.y = (this.y + DY[this.dir] + this.height) % this.height;
-            while(this.space[this.x+":"+this.y] != "\"".charCodeAt(0)) {
-                this.push(this.get(this.x, this.y));
-                this.x = (this.x + DX[this.dir] + this.width) % this.width;
-                this.y = (this.y + DY[this.dir] + this.height) % this.height;
+            this.x = (this.x + this.dx + this.width) % this.width;
+            this.y = (this.y + this.dy + this.height) % this.height;
+            var last = -1;
+            while(this.get(this.x, this.y) != "\"".charCodeAt(0)) {
+                var next = this.get(this.x, this.y);
+                if (next != 32 || last != 32)
+                    this.push(next);
+                last = next;
+                this.x = (this.x + this.dx + this.width) % this.width;
+                this.y = (this.y + this.dy + this.height) % this.height;
             }
             break;
         case "#".charCodeAt(0):
-            this.x = (this.x + DX[this.dir] + this.width) % this.width;
-            this.y = (this.y + DY[this.dir] + this.height) % this.height;
+            this.x = (this.x + this.dx + this.width) % this.width;
+            this.y = (this.y + this.dy + this.height) % this.height;
             break;
         case "$".charCodeAt(0): this.pop(); break;
         case "%".charCodeAt(0): var a = this.pop(); var b = this.pop(); this.push(b % a); break;
@@ -250,12 +256,13 @@ class Befunge98 {
                     this.input_buffer = this.input_buffer.substr(1);
                 }
             } else {
-                this.dir = REVERSE[this.dir];
+                this.dx = -this.dx;
+                this.dy = -this.dy;
             }
             break;
         case "'".charCodeAt(0): 
-            this.x = (this.x + DX[this.dir] + this.width) % this.width;
-            this.y = (this.y + DY[this.dir] + this.height) % this.height;
+            this.x = (this.x + this.dx + this.width) % this.width;
+            this.y = (this.y + this.dy + this.height) % this.height;
             this.push(this.get(this.x, this.y));
             break;
         //case "(".charCodeAt(0):     Load Semantics/98    en..e1 n  f 1       overloads A-Z
@@ -265,7 +272,7 @@ class Befunge98 {
         case ",".charCodeAt(0): this.output_buffer += String.fromCharCode(this.pop()); break;
         case "-".charCodeAt(0): var a = this.pop(); var b = this.pop(); this.push(b - a); break;
         case ".".charCodeAt(0): this.output_buffer += this.pop().toString() + "\n"; break;
-        case "/".charCodeAt(0): var a = this.pop(); var b = this.pop(); this.push(Math.round(b / a)); break;
+        case "/".charCodeAt(0): var a = this.pop(); var b = this.pop(); this.push(~~(b / a)); break;
         case "0".charCodeAt(0): this.push(0); break;
         case "1".charCodeAt(0): this.push(1); break;
         case "2".charCodeAt(0): this.push(2); break;
@@ -278,24 +285,24 @@ class Befunge98 {
         case "9".charCodeAt(0): this.push(9); break;
         case ":".charCodeAt(0): var a = this.pop(); this.push(a); this.push(a); break;
         case ";".charCodeAt(0):
-            this.x = (this.x + DX[this.dir] + this.width) % this.width;
-            this.y = (this.y + DY[this.dir] + this.height) % this.height;
+            this.x = (this.x + this.dx + this.width) % this.width;
+            this.y = (this.y + this.dy + this.height) % this.height;
             while(this.space[this.x+":"+this.y] != ";".charCodeAt(0)) {
-                this.x = (this.x + DX[this.dir] + this.width) % this.width;
-                this.y = (this.y + DY[this.dir] + this.height) % this.height;
+                this.x = (this.x + this.dx + this.width) % this.width;
+                this.y = (this.y + this.dy + this.height) % this.height;
             }
             break;
-        case "<".charCodeAt(0): this.dir = 1; break;
+        case "<".charCodeAt(0): this.dx = -1; this.dy = 0; break;
         //case "=".charCodeAt(0):     Execute/98/f         STR       r         r = system-execute(STR)
-        case ">".charCodeAt(0): this.dir = 0; break;
-        case "?".charCodeAt(0): this.dir = Math.random() * 4; break;
-        case "@".charCodeAt(0): this.running = false; this.dir = 4; return;
+        case ">".charCodeAt(0): this.dx = 1; this.dy = 0; break;
+        case "?".charCodeAt(0): var dir = Math.floor(Math.random() * 4); this.dx = DX[dir]; this.dy = DY[dir]; break;
+        case "@".charCodeAt(0): this.running = false; this.dx = 0; this.dy = 0; return;
         //case "A-Z                                            Fingerprint-Defined/98
-        case "[".charCodeAt(0): this.dir = TURN_LEFT[this.dir]; break;
+        case "[".charCodeAt(0): var tmp = this.dy; this.dy = -this.dx; this.dx = tmp; break;
         case "\\".charCodeAt(0): var a = this.pop(); var b = this.pop(); this.push(a); this.push(b); break;
-        case "]".charCodeAt(0): this.dir = TURN_RIGHT[this.dir]; break;
-        case "^".charCodeAt(0): this.dir = 3; break;
-        case "_".charCodeAt(0): if (this.pop()) this.dir = 1; else this.dir = 0; break;
+        case "]".charCodeAt(0): var tmp = this.dy; this.dy = this.dx; this.dx = -tmp; break;
+        case "^".charCodeAt(0): this.dx = 0; this.dy = -1; break;
+        case "_".charCodeAt(0): if (this.pop()) { this.dx = -1; this.dy = 0; } else { this.dx = 1; this.dy = 0; } break;
         case "`".charCodeAt(0): var a = this.pop(); var b = this.pop(); this.push(b > a ? 1 : 0); break;
         case "a".charCodeAt(0): this.push(10); break;
         case "b".charCodeAt(0): this.push(11); break;
@@ -306,44 +313,87 @@ class Befunge98 {
         case "g".charCodeAt(0): var y = this.pop(); var x = this.pop(); this.push(this.get(x, y)); break;
         //case "h".charCodeAt(0):     Go High/98/3D                            delta <- (0,0,-1)
         //case "i".charCodeAt(0):     Input File/98/f      Va f STR  Va Vb     inputs file
-        //case "j".charCodeAt(0):     Jump Forward/98      s                   pos <- pos + delta * s
-        //case "k".charCodeAt(0):     Iterate/98           n                   execute next instruction now, n times
+        case "j".charCodeAt(0):
+            var count = this.pop();
+            this.x = (this.x + this.dx * count + this.width) % this.width;
+            this.y = (this.y + this.dy * count + this.height) % this.height;
+            break;
+        case "k".charCodeAt(0):
+            var count = this.pop();
+            if (count == 0) {
+                this.x = (this.x + this.dx + this.width) % this.width;
+                this.y = (this.y + this.dy + this.height) % this.height;
+            } else {
+                var offset = 1;
+                var instruction = 32;
+                while(instruction == 32) {
+                    instruction = this.get((this.x + this.dx * offset + this.width) % this.width, (this.y + this.dy * offset + this.height) % this.height);
+                    offset += 1;
+                    if (instruction == ";".charCodeAt(0)) {
+                        instruction = 0;
+                        while(instruction != ";".charCodeAt(0)) {
+                            instruction = this.get((this.x + this.dx * offset + this.width) % this.width, (this.y + this.dy * offset + this.height) % this.height);
+                            offset += 1;
+                        }
+                        instruction = 32;
+                    }
+                }
+                for(var n=0; n<count; n++)
+                    this.execute(instruction);
+            }
+            break
         //case "l".charCodeAt(0):     Go Low/98/3D                             delta <- (0,0,1)
         //case "m".charCodeAt(0):     High-Low If/98/3D    b                   delta <- if (b) (0,0,-1) else (0,0,1)
-        //case "n".charCodeAt(0):     Clear Stack/98       en..e1
+        case "n".charCodeAt(0): while(this.stack.length) this.pop(); break;
         //case "o".charCodeAt(0):     Output File/98/f     Va Vb f STR         outputs file
         case "p".charCodeAt(0): var y = this.pop(); var x = this.pop(); this.set(x, y, this.pop()); break;
-        case "q".charCodeAt(0): this.running = false; this.dir = 4; return;
-        case "r".charCodeAt(0): this.dir = REVERSE[this.dir]; break;
+        case "q".charCodeAt(0): this.running = false; this.dx = 0; this.dy = 0; return;
+        case "r".charCodeAt(0): this.dx = -this.dx; this.dy = -this.dy; break;
         case "s".charCodeAt(0):
-            this.x = (this.x + DX[this.dir] + this.width) % this.width;
-            this.y = (this.y + DY[this.dir] + this.height) % this.height;
+            this.x = (this.x + this.dx + this.width) % this.width;
+            this.y = (this.y + this.dy + this.height) % this.height;
             this.set(this.x, this.y, this.pop());
             break;
         //case "t".charCodeAt(0):     Split/98/c                               Split IP
         //case "u".charCodeAt(0):     Stack Under Stack/98 n         (en..e1)
-        case "v".charCodeAt(0): this.dir = 2; break;
-        //case "w".charCodeAt(0):     Compare/98/2D        a b                 if (a>b) ']' elsif (a<b) '[' else 'z'
-        //case "x".charCodeAt(0):     Absolute Delta/98    Va                  delta <- Va
+        case "v".charCodeAt(0): this.dx = 0; this.dy = 1; break;
+        case "w".charCodeAt(0):
+            var a = this.pop(); var b = this.pop();
+            if(b > a) {
+                var tmp = this.dy; this.dy = this.dx; this.dx = -tmp;
+            } else if (b < a) {
+                var tmp = this.dy; this.dy = -this.dx; this.dx = tmp;
+            }
+            break;
+        case "x".charCodeAt(0):
+            this.dy = this.pop();
+            this.dx = this.pop();
+            break;
         //case "y".charCodeAt(0):     Get SysInfo/98       c         en(..e1)
         //case "z".charCodeAt(0):     No Operation/98
         //case "{".charCodeAt(0):     Begin Block/98       en..e1 n  (en..e1)  offset <- pos + delta, etc
-        case "|".charCodeAt(0): if (this.pop()) this.dir = 3; else this.dir = 2; break;
+        case "|".charCodeAt(0): if (this.pop()) { this.dx = 0; this.dy = -1; } else { this.dx = 0; this.dy = 1; } break;
         //case "}".charCodeAt(0):     End Block/98         en..e1 n  (en..e1)  offset <- SOSS Va, etc
         case "~".charCodeAt(0):
             if (this.input_buffer.length) {
                 this.push(this.input_buffer.charCodeAt(0));
                 this.input_buffer = this.input_buffer.substr(1);
             } else {
-                this.dir = REVERSE[this.dir];
+                this.dx = -this.dx;
+                this.dy = -this.dy;
             }
             break;
         
         //NON standard!
         case "B".charCodeAt(0): this.running = false; break; //Debugging breakpoint.
         }
-        this.x = (this.x + DX[this.dir] + this.width) % this.width;
-        this.y = (this.y + DY[this.dir] + this.height) % this.height;
+    }
+    
+    step()
+    {
+        this.execute(this.space[this.x+":"+this.y]);
+        this.x = (this.x + this.dx + this.width) % this.width;
+        this.y = (this.y + this.dy + this.height) % this.height;
 
         if (this.history.length > 6)
             this.history.shift();
@@ -367,13 +417,13 @@ class Befunge98 {
         this.runcycles = cycles;
         this.running = true;
         var f = () => {
-            for(var n=0; n<this.runcycles && this.running && this.dir != 4; n++) {
+            for(var n=0; n<this.runcycles && this.running && (this.dx != 0 || this.dy != 0); n++) {
                 this.step();
                 if (this.breakpoints.has(this.x+":"+this.y))
                     this.running = false;
             }
             callback();
-            if (this.running && this.dir != 4) window.requestAnimationFrame(f);
+            if (this.running && (this.dx != 0 || this.dy != 0)) window.requestAnimationFrame(f);
         }
         f();
     }

@@ -240,7 +240,19 @@ class Befunge98 {
             break;
         case "$".charCodeAt(0): this.pop(); break;
         case "%".charCodeAt(0): var a = this.pop(); var b = this.pop(); this.push(b % a); break;
-        //case "&".charCodeAt(0):     Input Integer                  a         a = readint()
+        case "&".charCodeAt(0):
+            while(this.input_buffer.length && "0123456789".indexOf(this.input_buffer[0]) == -1) {
+                this.input_buffer = this.input_buffer.substr(1);
+            }
+            if (this.input_buffer.length) {
+                this.push(parseInt(this.input_buffer));
+                while(this.input_buffer.length && "0123456789".indexOf(this.input_buffer[0]) != -1) {
+                    this.input_buffer = this.input_buffer.substr(1);
+                }
+            } else {
+                this.dir = REVERSE[this.dir];
+            }
+            break;
         case "'".charCodeAt(0): 
             this.x = (this.x + DX[this.dir] + this.width) % this.width;
             this.y = (this.y + DY[this.dir] + this.height) % this.height;
@@ -320,7 +332,8 @@ class Befunge98 {
         //case "}".charCodeAt(0):     End Block/98         en..e1 n  (en..e1)  offset <- SOSS Va, etc
         case "~".charCodeAt(0):
             if (this.input_buffer.length) {
-                this.push(this.input_buffer.charCodeAt(0)); this.input_buffer = this.input_buffer.substr(1);
+                this.push(this.input_buffer.charCodeAt(0));
+                this.input_buffer = this.input_buffer.substr(1);
             } else {
                 this.dir = REVERSE[this.dir];
             }

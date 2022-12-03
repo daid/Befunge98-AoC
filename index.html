@@ -38,11 +38,13 @@ body {
     font-family: monospace;
     display: inline-block;
     vertical-align: top;
+    background-color: #eee;
 }
 #output {
     font-family: monospace;
     display: inline-block;
     vertical-align: top;
+    background-color: #eee;
 }
 #input {
     outline: 0px;
@@ -51,6 +53,7 @@ body {
     min-width: 100px;
     white-space: pre;
     vertical-align: top;
+    background-color: #eee;
 }
 #tooltip {
     position: absolute;
@@ -84,6 +87,7 @@ body {
 <div id="buttons">
     <button id="reset">Reset</button><br>
     <button id="run">Run</button><br>
+    <input id="runcycles" type="number" value="1" style="width: 60px"/><br>
     <button id="step">Step</button>
 </div>
 Stack:
@@ -128,6 +132,7 @@ function updateBackground() {
     EBI("stack").innerHTML = befunge.stack.join("<br>");
     EBI("output").innerText = befunge.output_buffer;
     EBI("input").innerText = befunge.input_buffer;
+    EBI("run").className = befunge.running ? "cursor" : "";
 }
 function updateCode() {
     var code = ""
@@ -164,30 +169,27 @@ class Befunge98 {
         this.input_buffer = "";
         this.output_buffer = "";
         this.running = false;
+        this.runcycles = 1;
         this.breakpoints = new Set();
         this.history = []
 
         var x = 0, y = 0;
         if (code.endsWith("\n")) code = code.substr(0, code.length-1);
         for(var c of code) {
-            if (c == "\n") { this.width = Math.max(this.width, x); x = 0; y += 1; continue; }
-            if (c != " " && c.charCodeAt(0) != 160) this.space[x+":"+y] = c.charCodeAt(0);
+            if (c == "\n") { x = 0; y += 1; continue; }
+            if (c != " " && c.charCodeAt(0) != 160) this.set(x, y, c.charCodeAt(0));
             x += 1;
         }
-        this.width = Math.max(this.width, x);
-        this.height = y + 1;
         
         this.movement_field = {}
         this._build_movement_field(0, 0, 0)
     }
     
     _build_movement_field(x, y, dir) {
-        var skip = false;
         var safety = 10000;
         while(!(this.movement_field[x+":"+y] & (1 << dir)) && safety > 0) {
             this.movement_field[x+":"+y] |= 0x10 << dir;
             safety -= 1;
-            if (skip) skip = false; else
             switch(this.space[x+":"+y]) {
             case ">".charCodeAt(0): dir = 0; break;
             case "<".charCodeAt(0): dir = 1; break;
@@ -195,10 +197,12 @@ class Befunge98 {
             case "^".charCodeAt(0): dir = 3; break;
             case "|".charCodeAt(0): dir = 3; this.movement_field[x+":"+y] |= 1 << dir;  this._build_movement_field(x, y+1, 2); break;
             case "_".charCodeAt(0): dir = 0; this.movement_field[x+":"+y] |= 1 << dir;  this._build_movement_field(x-1, y, 1); break;
+            case "~".charCodeAt(0): this._build_movement_field(x-1, y, REVERSE[dir]); break;
             case "[".charCodeAt(0): dir = TURN_LEFT[dir]; break;
             case "]".charCodeAt(0): dir = TURN_RIGHT[dir]; break;
             case "?".charCodeAt(0): dir = 0; this.movement_field[x+":"+y] |= 0x0F; this._build_movement_field(x-1, y, 1); this._build_movement_field(x, y+1, 2); this._build_movement_field(x, y-1, 3); break;
-            case "#".charCodeAt(0): skip=true; break;
+            case "#".charCodeAt(0): x = (x + DX[dir] + this.width) % this.width; y = (y + DY[dir] + this.height) % this.height; break;
+            case "'".charCodeAt(0): x = (x + DX[dir] + this.width) % this.width; y = (y + DY[dir] + this.height) % this.height; break;
             case "@".charCodeAt(0): return;
             case ";".charCodeAt(0):
                 x = (x + DX[dir] + this.width) % this.width;
@@ -325,11 +329,12 @@ class Befunge98 {
         //NON standard!
         case "B".charCodeAt(0): this.running = false; break; //Debugging breakpoint.
         }
+        this.x = (this.x + DX[this.dir] + this.width) % this.width;
+        this.y = (this.y + DY[this.dir] + this.height) % this.height;
+
         if (this.history.length > 6)
             this.history.shift();
         this.history.push([this.x, this.y]);
-        this.x = (this.x + DX[this.dir] + this.width) % this.width;
-        this.y = (this.y + DY[this.dir] + this.height) % this.height;
     }
     
     set(x, y, value) {
@@ -346,9 +351,10 @@ class Befunge98 {
     
     run(cycles, callback)
     {
+        this.runcycles = cycles;
         this.running = true;
         var f = () => {
-            for(var n=0; n<cycles && this.running && this.dir != 4; n++) {
+            for(var n=0; n<this.runcycles && this.running && this.dir != 4; n++) {
                 this.step();
                 if (this.breakpoints.has(this.x+":"+this.y))
                     this.running = false;
@@ -417,6 +423,7 @@ EBI("code").onmouseleave = function(e) {
 EBI("input").oninput = function() { window.requestAnimationFrame(function() { start_input_data = EBI("input").innerText; if (!start_input_data.endsWith("\n")) start_input_data += "\n"; localStorage["defunge_input"] = start_input_data; reload(); }); }
 EBI("reset").onclick = function() { reload(); updateBackground(); }
 EBI("step").onclick = function() { befunge.running = false; befunge.step(); updateBackground(); updateCode(); }
-EBI("run").onclick = function() { befunge.run(1000, function() { updateBackground(); updateCode(); }); }
+EBI("run").onclick = function() { befunge.run(EBI("runcycles").value, function() { updateBackground(); updateCode(); }); }
+EBI("runcycles").oninput = function() { befunge.runcycles = EBI("runcycles").value; }
 
 </script>

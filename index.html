@@ -20,8 +20,12 @@ body {
     outline: 0px;
     display: inline-block;
     font-family: monospace;
-    min-width: 100px;
+    font-size: x-large;
     white-space: pre;
+    background: none;
+    border: none;
+    resize: none;
+    padding: 0px;
 }
 #codebg {
     font-family: monospace;
@@ -50,7 +54,6 @@ body {
     outline: 0px;
     display: inline-block;
     font-family: monospace;
-    min-width: 100px;
     white-space: pre;
     vertical-align: top;
     background-color: #eee;
@@ -82,7 +85,7 @@ body {
 </head>
 <div id="codecontent">
 <div id="codebg"></div>
-<div id="code" contenteditable="true" spellcheck="false">92/.@</div>
+<textarea id="code" spellcheck="false" autocomplete="off">92/.@</textarea>
 </div>
 <div id="buttons">
     <button id="reset">Reset</button><br>
@@ -95,7 +98,7 @@ Stack:
 Output:
 <div id="output"></div>
 Input:
-<div id="input" contenteditable="true" spellcheck="false"></div>
+<textarea id="input" spellcheck="false" autocomplete="off" rows="25" cols="40"></textarea>
 <div id="tooltip">Tooltip!</div>
 <script>"use strict";
 function EBI(id) { return document.getElementById(id); }
@@ -131,8 +134,10 @@ function updateBackground() {
     EBI("codebg").innerHTML = html;
     EBI("stack").innerHTML = befunge.stack.join("<br>");
     EBI("output").innerText = befunge.output_buffer;
-    EBI("input").innerText = befunge.input_buffer;
+    EBI("input").value = befunge.input_buffer;
     EBI("run").className = befunge.running ? "cursor" : "";
+    EBI("code").rows = befunge.height + 1;
+    EBI("code").cols = befunge.width;
 }
 function updateCode() {
     var code = ""
@@ -148,7 +153,7 @@ function updateCode() {
         if (y < befunge.height - 1)
             code += "\n";
     }
-    EBI("code").innerText = code;
+    EBI("code").value = code;
 }
 
 var DX = [1, -1, 0, 0];
@@ -159,14 +164,16 @@ var REVERSE = [1, 0, 3, 2];
 class Befunge98 {
     constructor(code) {
         this.space = {};
-        this.width = 0;
-        this.height = 0;
+        this.width = 1;
+        this.height = 1;
         this.x = 0;
         this.y = 0;
         this.dx = 1;
         this.dy = 0;
+        this.sx = 0;
+        this.sy = 0;
         this.stack = []
-        this.stacks = [this.stack]
+        this.sos = []
         this.input_buffer = "";
         this.output_buffer = "";
         this.running = false;
@@ -310,7 +317,7 @@ class Befunge98 {
         case "d".charCodeAt(0): this.push(13); break;
         case "e".charCodeAt(0): this.push(14); break;
         case "f".charCodeAt(0): this.push(15); break;
-        case "g".charCodeAt(0): var y = this.pop(); var x = this.pop(); this.push(this.get(x, y)); break;
+        case "g".charCodeAt(0): var y = this.pop(); var x = this.pop(); this.push(this.get(x + this.sx, y + this.sy)); break;
         //case "h".charCodeAt(0):     Go High/98/3D                            delta <- (0,0,-1)
         //case "i".charCodeAt(0):     Input File/98/f      Va f STR  Va Vb     inputs file
         case "j".charCodeAt(0):
@@ -346,7 +353,7 @@ class Befunge98 {
         //case "m".charCodeAt(0):     High-Low If/98/3D    b                   delta <- if (b) (0,0,-1) else (0,0,1)
         case "n".charCodeAt(0): while(this.stack.length) this.pop(); break;
         //case "o".charCodeAt(0):     Output File/98/f     Va Vb f STR         outputs file
-        case "p".charCodeAt(0): var y = this.pop(); var x = this.pop(); this.set(x, y, this.pop()); break;
+        case "p".charCodeAt(0): var y = this.pop(); var x = this.pop(); this.set(x + this.sx, y + this.sy, this.pop()); break;
         case "q".charCodeAt(0): this.running = false; this.dx = 0; this.dy = 0; return;
         case "r".charCodeAt(0): this.dx = -this.dx; this.dy = -this.dy; break;
         case "s".charCodeAt(0):
@@ -355,7 +362,20 @@ class Befunge98 {
             this.set(this.x, this.y, this.pop());
             break;
         //case "t".charCodeAt(0):     Split/98/c                               Split IP
-        //case "u".charCodeAt(0):     Stack Under Stack/98 n         (en..e1)
+        case "u".charCodeAt(0):
+            if (this.sos.length > 0) {
+                var cnt = this.pop();
+                for(var n=0; n<cnt; n++) {
+                    var v = this.sos[this.sos.length-1].pop();
+                    this.push(v || 0);
+                }
+                for(var n=0; n<-cnt; n++) {
+                    this.sos[this.sos.length-1].push(this.pop());
+                }
+            } else {
+                this.dx = -this.dx; this.dy = -this.dy;
+            }
+            break;
         case "v".charCodeAt(0): this.dx = 0; this.dy = 1; break;
         case "w".charCodeAt(0):
             var a = this.pop(); var b = this.pop();
@@ -369,11 +389,74 @@ class Befunge98 {
             this.dy = this.pop();
             this.dx = this.pop();
             break;
-        //case "y".charCodeAt(0):     Get SysInfo/98       c         en(..e1)
+        case "y".charCodeAt(0):
+            var offset = this.pop();
+
+            var sos = this.stack.length;
+            var soss = this.stack.length;
+            for(var s of this.sos) soss += s.length;
+            this.push(0); this.push(0); // ENV
+            this.push(0); this.push(0); // argv
+            this.push(soss);
+            this.push(this.sos.length + 1);
+            var now = new Date();
+            this.push((now.getHours() << 16) | (now.getMinutes() << 8) | now.getSeconds());
+            this.push(((now.getFullYear() - 1900) << 16) | ((now.getMonth() + 1) << 8) | now.getDate());
+            this.push(this.width);
+            this.push(this.height);
+            this.push(0);
+            this.push(0);
+            this.push(this.sx);
+            this.push(this.sy);
+            this.push(this.dx);
+            this.push(this.dy);
+            this.push(this.x);
+            this.push(this.y);
+            this.push(0); // current team
+            this.push(0); // current IP
+            this.push(2); // number dimensions
+            this.push("/".charCodeAt(0)); // path seperator
+            this.push(0); // = type (unavailable)
+            this.push(100); // version
+            this.push(0x12341234); // handprint
+            this.push(8); // bytes per cell
+            this.push(0); // flags
+            
+            if (offset > 0) {
+                var tmp = this.stack[this.stack.length - offset] || 0;
+                this.stack.splice(sos);
+                this.push(tmp);
+            }
+            break;
         //case "z".charCodeAt(0):     No Operation/98
-        //case "{".charCodeAt(0):     Begin Block/98       en..e1 n  (en..e1)  offset <- pos + delta, etc
         case "|".charCodeAt(0): if (this.pop()) { this.dx = 0; this.dy = -1; } else { this.dx = 0; this.dy = 1; } break;
-        //case "}".charCodeAt(0):     End Block/98         en..e1 n  (en..e1)  offset <- SOSS Va, etc
+        case "{".charCodeAt(0):
+            var cnt = this.pop();
+            var new_stack = this.stack.splice(this.stack.length - Math.max(0, cnt));
+            for(var n=0; n<-cnt; n++)
+                this.stack.push(0);
+            this.push(this.sx);
+            this.push(this.sy);
+            this.sos.push(this.stack);
+            this.stack = new_stack;
+            this.sx = (this.x + this.dx + this.width) % this.width;
+            this.sy = (this.y + this.dy + this.height) % this.height;
+            if (this.sx == undefined) debugger;
+            break;
+        case "}".charCodeAt(0):
+            if (this.sos.length > 0) {
+                var cnt = this.pop();
+                var new_stack = this.sos.pop();
+                this.sy = new_stack.pop() || 0;
+                this.sx = new_stack.pop() || 0;
+                new_stack.push(...this.stack.splice(this.stack.length - Math.max(0, cnt)));
+                this.stack = new_stack;
+                for(var n=0; n<-cnt; n++)
+                    this.pop();
+            } else {
+                this.dx = -this.dx; this.dy = -this.dy;
+            }
+            break;
         case "~".charCodeAt(0):
             if (this.input_buffer.length) {
                 this.push(this.input_buffer.charCodeAt(0));
@@ -438,10 +521,10 @@ class Befunge98 {
 
 var start_input_data = "";
 if (localStorage["defunge_code"]) {
-    EBI("code").innerText = localStorage["defunge_code"];
+    EBI("code").value = localStorage["defunge_code"];
 }
 if (localStorage["defunge_input"]) {
-    EBI("input").innerText = localStorage["defunge_input"];
+    EBI("input").value = localStorage["defunge_input"];
     start_input_data = localStorage["defunge_input"];
 }
 
@@ -452,13 +535,13 @@ function reload()
         befunge.running = false;
         breakpoints = befunge.breakpoints;
     }
-    befunge = new Befunge98(EBI("code").innerText);
+    befunge = new Befunge98(EBI("code").value);
     if (breakpoints)
         befunge.breakpoints = breakpoints;
     befunge.input_buffer = start_input_data;
 }
 
-EBI("code").oninput = function() { window.requestAnimationFrame(function() { localStorage["defunge_code"] = EBI("code").innerText; reload(); updateBackground();}); }
+EBI("code").oninput = function() { window.requestAnimationFrame(function() {localStorage["defunge_code"] = EBI("code").value; reload(); updateBackground();}); }
 EBI("code").oninput();
 EBI("code").oncontextmenu = function(e) {
     const r = EBI("codebg").children[0].getClientRects()[0];
@@ -469,6 +552,7 @@ EBI("code").oncontextmenu = function(e) {
     return false;
 }
 EBI("code").onmousemove = function(e) {
+    if (EBI("codebg").children.length == 0) return;
     const r = EBI("codebg").children[0].getClientRects()[0];
     const x = Math.floor(e.offsetX / r.width);
     const y = Math.floor(e.offsetY / r.height);
@@ -483,10 +567,10 @@ EBI("code").onmousemove = function(e) {
 EBI("code").onmouseleave = function(e) {
     EBI("tooltip").style.display = "none";
 }
-EBI("input").oninput = function() { window.requestAnimationFrame(function() { start_input_data = EBI("input").innerText; if (!start_input_data.endsWith("\n")) start_input_data += "\n"; localStorage["defunge_input"] = start_input_data; reload(); }); }
+EBI("input").oninput = function() { window.requestAnimationFrame(function() { start_input_data = EBI("input").value; if (!start_input_data.endsWith("\n")) start_input_data += "\n"; localStorage["defunge_input"] = start_input_data; reload(); }); }
 EBI("reset").onclick = function() { reload(); updateBackground(); }
 EBI("step").onclick = function() { befunge.running = false; befunge.step(); updateBackground(); updateCode(); }
-EBI("run").onclick = function() { befunge.run(EBI("runcycles").value, function() { updateBackground(); updateCode(); }); }
+EBI("run").onclick = function() { if (befunge.running) befunge.running = false; else befunge.run(EBI("runcycles").value, function() { updateBackground(); updateCode(); }); }
 EBI("runcycles").oninput = function() { befunge.runcycles = EBI("runcycles").value; }
 
 </script>

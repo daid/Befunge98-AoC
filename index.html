@@ -156,6 +156,72 @@ function updateCode() {
     EBI("code").value = code;
 }
 
+var HELP = {
+    "!": "Logical Not",
+    '"': "Toggle Stringmode",
+    "#": "Trampoline",
+    "$": "Pop",
+    "%": "Remainder",
+    "&": "Input Integer",
+    "'": "Fetch Character",
+    //"(": "Load Semantics",
+    //")": "Unload Semantics",
+    "*": "Multiply",
+    "+": "Add",
+    ",": "Output Character",
+    "-": "Subtract",
+    ".": "Output Integer",
+    "/": "Divide",
+    "0": "Push Zero",
+    "1": "Push One",
+    "2": "Push Two",
+    "3": "Push Three",
+    "4": "Push Four",
+    "5": "Push Five",
+    "6": "Push Six",
+    "7": "Push Seven",
+    "8": "Push Eight",
+    "9": "Push Niner",
+    ":": "Duplicate",
+    ";": "Jump Over",
+    "<": "Go West",
+    ">": "Go East",
+    "?": "Go Away",
+    "@": "Stop",
+    "[": "Turn Left",
+    "\\": "Swap",
+    "]": "Turn Right",
+    "^": "Go North",
+    "_": "East-West If",
+    "`": "Greater Than",
+    "a": "Push Ten",
+    "b": "Push Eleven",
+    "c": "Push Twelve",
+    "d": "Push Thirteen",
+    "e": "Push Fourteen",
+    "f": "Push Fifteen",
+    "g": "Get",
+    "j": "Jump Forward",
+    "k": "Iterate",
+    "n": "Clear Stack",
+    "o": "Output File",
+    "p": "Put",
+    "q": "Quit",
+    "r": "Reflect",
+    "s": "Store Character",
+    "t": "Split",
+    "u": "Stack Under Stack",
+    "v": "Go South",
+    "w": "Compare",
+    "x": "Absolute Delta",
+    "y": "Get SysInfo",
+    "z": "No Operation",
+    "{": "Begin Block",
+    "|": "North-South If",
+    "}": "End Block",
+    "~": "Input Character",
+};
+
 var DX = [1, -1, 0, 0];
 var DY = [0, 0, 1, -1];
 var TURN_LEFT = [3, 2, 0, 1];
@@ -563,6 +629,9 @@ EBI("code").onmousemove = function(e) {
     tooltip.style.display = "inline-block";
     const value = befunge.get(x, y);
     tooltip.innerText = x + ":" + y + " = " + value.toString();
+    if (String.fromCharCode(value) in HELP) {
+        tooltip.innerText += "\n" + HELP[String.fromCharCode(value)];
+    }
 }
 EBI("code").onmouseleave = function(e) {
     EBI("tooltip").style.display = "none";

@@ -272,13 +272,25 @@ class Befunge98 {
             this.y = (this.y + this.dy + this.height) % this.height;
             this.push(this.get(this.x, this.y));
             break;
-        //case "(".charCodeAt(0):     Load Semantics/98    en..e1 n  f 1       overloads A-Z
-        //case ")".charCodeAt(0):     Unload Semantics/98  en..e1 n            unloads last A-Z
+        case "(".charCodeAt(0):
+            var cnt = this.pop();
+            var fingerprint = 0;
+            for(var n=0; n<cnt; n++)
+                fingerprint = fingerprint * 256 + this.pop();
+            this.dx = -this.dx; this.dy = -this.dy;
+            break;
+        case ")".charCodeAt(0):
+            var cnt = this.pop();
+            var fingerprint = 0;
+            for(var n=0; n<cnt; n++)
+                fingerprint = fingerprint * 256 + this.pop();
+            this.dx = -this.dx; this.dy = -this.dy;
+            break;
         case "*".charCodeAt(0): var a = this.pop(); var b = this.pop(); this.push(a * b); break;
         case "+".charCodeAt(0): var a = this.pop(); var b = this.pop(); this.push(a + b); break;
         case ",".charCodeAt(0): this.output_buffer += String.fromCharCode(this.pop()); break;
         case "-".charCodeAt(0): var a = this.pop(); var b = this.pop(); this.push(b - a); break;
-        case ".".charCodeAt(0): this.output_buffer += this.pop().toString() + "\n"; break;
+        case ".".charCodeAt(0): this.output_buffer += this.pop().toString() + " "; break;
         case "/".charCodeAt(0): var a = this.pop(); var b = this.pop(); this.push(~~(b / a)); break;
         case "0".charCodeAt(0): this.push(0); break;
         case "1".charCodeAt(0): this.push(1); break;

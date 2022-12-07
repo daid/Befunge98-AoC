@@ -65,3 +65,51 @@ v<v$pe\0$<    v    pc0+1g<            <
 v<v$pf\0$<         >eg:| $    >$>fg:| $    >fg '`-:1`|  +
   >       cp  >cgdg|   >$^          >$^              >':^
 >1cg.@             @                                     
+
+=== Day 4 Part 1 ===
+    3p >v;read in a row                 
+  A     [ &01p ~$ &11p ~$ &02p ~$ &12p v
+  B     >03g.@                          
+ Score   v                             <
+                                       
+         > 02g01g`!v                    
+         v         _          v         
+         > 11g12g`!v                    
+       ^  p30+1g30 _          v         
+         v                    <         
+         > 01g02g`!v                    
+         v         _          v         
+         > 12g11g`!v                    
+       ^  p30+1g30 _          v         
+       ^                      <         
+
+=== Day 4 Part 2===
+
+    3p >v;read in a row                 
+  A     [ &01p ~$ &11p ~$ &02p ~$ &12p v
+  B     >03g.@                          
+ Score   v                             <
+                                        
+         > 01g12g`!v                    
+         v         _          v         
+         > 02g11g`!v                    
+       ^  p30+1g30 _          v         
+       ^                      <         
+
+
+
+
+=== Day 4 WRONG ===
+f01pf02  p4pv;first read in all rows     ;<                                                      
+ rowmax     [ &001gp ~$ &101gp ~$ 01g1+01p^                                                      
+ testrow      for each row, check if it is fully contained within other rows                     
+ comprow>  >>  02g01g-v        first check if we are done with all rows                          
+ score  p   v p30f    _ 04g.@                                                                    
+        2>  > 03g01g-!v         check if we are at the end of the list                           
+        0^;^p20+1g20  _v ;p30+1g30 <                                                             
+        +      v-g30g20<             next check if we want to skip this compare as it is the same
+        1v     _                   ^                                                             
+        g> 003gg002gg`!v                                                                         
+        2v             _           ^                                                             
+        0> 102gg103gg`!v                                                                         
+        ^     p40+1g40 _           ^                                                             

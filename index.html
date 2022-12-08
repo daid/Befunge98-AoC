@@ -271,7 +271,8 @@ class Befunge98 {
             case "^".charCodeAt(0): dir = 3; break;
             case "|".charCodeAt(0): dir = 3; this.movement_field[x+":"+y] |= 1 << dir;  this._build_movement_field(x, y+1, 2); break;
             case "_".charCodeAt(0): dir = 0; this.movement_field[x+":"+y] |= 1 << dir;  this._build_movement_field(x-1, y, 1); break;
-            case "~".charCodeAt(0): this._build_movement_field(x-1, y, REVERSE[dir]); break;
+            case "~".charCodeAt(0): this.movement_field[x+":"+y] |= 1 << dir;  this._build_movement_field(x-1, y, REVERSE[dir]); break;
+            case "&".charCodeAt(0): this.movement_field[x+":"+y] |= 1 << dir;  this._build_movement_field(x-1, y, REVERSE[dir]); break;
             case "[".charCodeAt(0): dir = TURN_LEFT[dir]; break;
             case "]".charCodeAt(0): dir = TURN_RIGHT[dir]; break;
             case "?".charCodeAt(0): dir = 0; this.movement_field[x+":"+y] |= 0x0F; this._build_movement_field(x-1, y, 1); this._build_movement_field(x, y+1, 2); this._build_movement_field(x, y-1, 3); break;

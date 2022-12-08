@@ -114,6 +114,24 @@ vg10+1g20 gg10-g20gg100 p40 gg10+1g20 _001g1+:01p  g    |
  |:gg400 p40<f<             vpg20pg200:+1gg200 gg10gg100<!                     
  @                          >001gg1-001gp 04g1-:04p      ^                     
 
+=== Day 5 Part 2===
+f01p      >1gp1g1+01p1gf2*-v>v read in row by row, appending data to the towers
+ curtower ^                _^       v p10+1g10     ;next col;            <     
+ curcol                      [>f01p >~$ ~:84*-v  >$;no need to add;>~$~a-|     
+      ;next line;           ^v1':             _  ^      <                >     
+ tmp                         -                                                 
+                             ! add to end of the tower                         
+      v    ;skip till eol ;$ _ 001gg1+01gp 001gg1+001gp ^                      
+      > ~a-v>~$ ; Now we need to flip each tower ; f01p v                      
+      ^    _^                         v-/2gg100g20<p200 <                      
+vg10+1g20 gg10-g20gg100 p40 gg10+1g20 _001g1+:01p  g    |                      
+>p 04g001gg02g-01gp 02g1+02p                      ^                            
+              v   ;time to execute the move commands  ; < pg100-g50gg100<      
+ >04gg,04g1+v [ &:05p04p &e+01p &e+02p            04g                  !|<     
+ |:gg400 p40<f<             vpg20pg200:+1gg200 gg10+1-g40gg100          <!     
+ @                          >             04g1-:04p                      ^     
+
+
 === Day 4 WRONG ===
 f01pf02  p4pv;first read in all rows     ;<                                                      
  rowmax     [ &001gp ~$ &101gp ~$ 01g1+01p^                                                      
